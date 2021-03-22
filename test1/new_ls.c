@@ -14,9 +14,17 @@
 #define MAX_SIZE 100;        //最大的行宽
 int space=100;         //剩余空间
 int max_long=0;        //每个目录下最长的文件名
+void work_dir(char *path,int flag);
+void my_error(const char *error_string, int line);
+void simple_play(char *name);
+void all_play(char *name,struct stat buf);
+void display_R(int flag,char *pastfile[],int num);
+void display_type(char *name,int flag);
+
+
 void my_error(const char *error_string, int line)
 {
-    fprintf(stderr, "line:%d", line);
+    fprintf(stderr, "line:%d",line);
     perror(error_string);
     
 }
@@ -38,12 +46,243 @@ void simple_play(char *name) //无参数只输出名字
         space=100;
     }
 }
-void display_type(char *name,int flag)
+void all_play(char *name,struct stat buf)
+{
+    struct passwd *p;
+    struct group *g;
+    g = getgrgid(buf.st_gid);
+    p = getpwuid(buf.st_uid);
+    if (g==NULL||p==NULL)
+    {   printf("无法打开文件\n");
+        perror("getpwuid");
+        return;
+    }
+    if (S_ISLNK(buf.st_mode))
+    {
+        printf("l");
+    }
+    else if (S_ISREG(buf.st_mode))
+    {
+        printf("_");
+    }
+    else if (S_ISDIR(buf.st_mode))
+    {
+        printf("d");
+    }
+    else if (S_ISCHR(buf.st_mode))
+    {
+        printf("c");
+    }
+    else if (S_ISBLK(buf.st_mode))
+    {
+        printf("b");
+    }
+    else if (S_ISFIFO(buf.st_mode))
+    {
+        printf("f");
+    }
+    else if (S_ISSOCK(buf.st_mode))
+    {
+        printf("s");
+    }
+    if (buf.st_mode & S_IRUSR)
+    {
+        printf("r");
+    }
+    else
+        printf("-");
+    if (buf.st_mode & S_IWUSR)
+    {
+        printf("w");
+    }
+    else
+        printf("-");
+    if (buf.st_mode & S_IXUSR)
+    {
+        printf("x");
+    }
+    else
+        printf("-");
+
+    if (buf.st_mode & S_IRGRP)
+    {
+        printf("r");
+    }
+    else
+        printf("-");
+    if (buf.st_mode & S_IWGRP)
+    {
+        printf("w");
+    }
+    else
+        printf("-");
+    if (buf.st_mode & S_IXGRP)
+    {
+        printf("x");
+    }
+    else
+        printf("-");
+
+    if (buf.st_mode & S_IROTH)
+    {
+        printf("r");
+    }
+    else
+        printf("-");
+    if (buf.st_mode & S_IWOTH)
+    {
+        printf("w");
+    }
+    else
+        printf("-");
+    if (buf.st_mode & S_IXOTH)
+    {
+        printf("x");
+    }
+    else
+        printf("-");
+    printf(" ");
+    printf("%ld", buf.st_nlink);
+    printf(" ");
+    printf("%-5s", p->pw_name);
+    printf("%-5s", g->gr_name);
+    printf("%6ld", buf.st_size);
+    printf(" ");
+    int size = strlen(ctime(&buf.st_ctime));
+    char timering[size + 1];
+    strcpy(timering, ctime(&buf.st_ctime));
+    timering[size - 1] = '\0';
+    printf("%s", timering);
+    printf(" ");
+    printf("%s", name);
+    printf("\n");
+}
+void display_R(int flag,char *pastfile[],int num)
 {
     
+    flag -= 4;
+    int i;
+    struct stat buf;
+    char a[PATH_MAX];
+    int k,j=0;
+    char *temple=(char*)malloc(sizeof(char)* PATH_MAX);
+    for (i=0;i<num;i++)
+    {
+        
+        int l=strlen(pastfile[i]);
+        strcpy(temple, pastfile[i]);
+        temple[l] = '\0';
+        for (k = 0, j = 0; k < strlen(pastfile[i]); k++)
+            {
+                if (pastfile[i][k] == '/')
+                {
+                    j = 0;
+                    continue;
+                }
+                a[j++] = pastfile[i][k];
+            }
+            a[j] = '\0';
+        if (strcmp(a,".")==0||strcmp(a,"..")==0)
+        {
+            continue;
+        }
+        if (lstat(pastfile[i], &buf) == -1)
+        {
+            
+            my_error("lstat",__LINE__);
+            continue;
+        }
+        if (S_ISDIR(buf.st_mode))
+        {
+            
+            if (temple[l-1] != '/')
+            {
+                strcat(temple,"/");
+            }
+            if (flag == 0)
+            {
+                if (a[0]!= '.')
+                {
+                    work_dir(temple,flag+4);
+                }
+            }
+            else if (flag == 1)
+            {
+                work_dir(temple,flag+4);
+            }
+            else if (flag == 2)
+            {
+                if (a[0] != '.')
+                {
+                    work_dir(temple,flag+4);
+                }
+            }
+            else if (flag == 3)
+            {
+                work_dir(temple,flag+4);
+            }
+        }
+        free(pastfile[i]);
+    }
+    free(temple);
 }
+void display_type(char *name,int flag)
+{   
+    int temple=flag;
+    if (flag==4|| flag==5||flag==7||flag==6)
+    {
+        flag-=4;
+    }
+    int i = 0, j = 0;
+    char a[PATH_MAX];
+    struct stat buf;
+
+    for (i = 0, j = 0; i < strlen(name); i++)
+    {
+        if (name[i] == '/')
+        {
+            j = 0;
+            continue;
+        }
+        a[j++] = name[i];
+    }
+    a[j] = '\0';
+
+    if (lstat(name, &buf) == -1)
+    {
+
+        my_error("lstat",__LINE__);
+        return;
+    }
+
+    if (flag == 0)
+    {
+        if (a[0] != '.')
+        {
+            simple_play(a);
+        }
+    }
+    else if (flag == 1)
+    {
+        simple_play(a);
+    }
+    else if (flag == 2)
+    {
+        if (a[0] != '.')
+        {
+            all_play(a,buf);
+        }
+    }
+    else if (flag == 3)
+    {
+        all_play(a,buf);
+    }
+    
+}
+
 void work_dir(char *path,int flag)
 {
+    
     DIR *dir;
     int num=0;
     int i=0;
@@ -67,35 +306,82 @@ void work_dir(char *path,int flag)
         my_error("opendir",__LINE__);
         return;
     }
-    char **filenames;
-    int len=(strlen(path));
-    filenames=(char**)malloc(sizeof(char*)*num);
+    char *filenames[num];
+    for (i = 0;i < num;i++)
+    {
+        filenames[i] = (char*)malloc(sizeof(char) * PATH_MAX);
+        if (filenames[i]==NULL)
+        my_error("malloc",__LINE__);
+    }
+    
+    int len=strlen(path);
     if (filenames==NULL)
     {
         my_error("malloc",__LINE__);
     }
     for (i=0;i<num;i++)
-    {   if ((readdir(dir))==NULL)
+    {   if ((ptr=readdir(dir))==NULL)
         {
-            break;
-        }
-        filenames[i]=(char*)malloc(sizeof(char)*(max_long+len+1));
-        if (filenames[i]==NULL)
-        {
-        my_error("malloc",__LINE__);
+            my_error("opendir",__LINE__);
+            return;
         }
         strncpy(filenames[i],path,len);
         filenames[i][len]='\0';
         strcat(filenames[i],ptr->d_name);
+        
     }
+    closedir(dir);
+    printf("%s:\n",path);
+
+
+
+
+
+
+        int a[num];
+        for (i=0;i<num;i++)
+        { 
+            a[i]=i;
+        } 
+        int j,t; 
+
+        for(j=0;j<num-1;j++) 
+
+            {for(i=0;i<num-1-j;i++) 
+
+             {   if(strcmp(filenames[a[i]],filenames[a[i+1]])>=0)
+
+                { 
+
+                t=a[i]; 
+
+                a[i]=a[i+1]; 
+
+                a[i+1]=t; 
+
+                }
+
+             }
+            }
+
+
+
+
+
+
+
+
     for (i=0;i<num;i++)
     {
-        simple_play(filenames[i]);
-        free(filenames[i]);
+        display_type(filenames[a[i]],flag);
+        
     }
-    free(filenames);
-    closedir(dir);
     
+    
+    if (flag==4|| flag==5||flag==7||flag==6)
+    {
+        display_R(flag,filenames,num);
+    }
 }
 
 int main(int argc, char **argv)
@@ -159,6 +445,7 @@ int main(int argc, char **argv)
         if (lstat(argv[i],&buf)==-1)
         {
             my_error("lstat",__LINE__);
+
             continue;
         }
         if (S_ISDIR(buf.st_mode)) //是目录就先处理后遍历文件
