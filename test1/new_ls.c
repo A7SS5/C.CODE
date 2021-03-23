@@ -6,6 +6,7 @@
 #include <linux/limits.h>
 #include<stdlib.h>
 #include<sys/types.h>
+#include <signal.h>
 #include<errno.h>
 #include<time.h>
 #include <grp.h>
@@ -21,7 +22,49 @@ void all_play(char *name,struct stat buf);
 void display_R(int flag,char *pastfile[],int num);
 void display_type(char *name,int flag);
 
+//颜色选择
+#define CLOSE printf("\033[0m"); //关闭彩色字体
+#define RED printf("\033[31m"); //红色字体
+#define GREEN printf("\033[36m");//绿色字体
+#define YELLOW printf("\033[33m");//黄色字体
+#define BLUE printf("\033[34m");//蓝色字体
+#define PURPLE printf("\033[35m");//紫色
+#define WHITE printf("\033[37m");//白色
+#define DD printf("\033[34m"); //浅绿色
 
+void colorprint(struct stat buf)
+{
+    if (S_ISLNK(buf.st_mode))
+    {
+        
+        RED
+    }
+    else if (S_ISREG(buf.st_mode))
+    {
+        GREEN
+        
+    }
+    else if (S_ISDIR(buf.st_mode))
+    {
+        YELLOW
+    }
+    else if (S_ISCHR(buf.st_mode))
+    {
+        BLUE
+    }
+    else if (S_ISBLK(buf.st_mode))
+    {
+        WHITE
+    }
+    else if (S_ISFIFO(buf.st_mode))
+    {
+        PURPLE
+    }
+    else if (S_ISSOCK(buf.st_mode))
+    {
+        DD
+    }
+}
 void my_error(const char *error_string, int line)
 {
     fprintf(stderr, "line:%d",line);
@@ -46,10 +89,12 @@ void simple_play(char *name) //无参数只输出名字
         space=100;
     }
 }
+
 void all_play(char *name,struct stat buf)
 {
     struct passwd *p;
     struct group *g;
+    GREEN
     g = getgrgid(buf.st_gid);
     p = getpwuid(buf.st_uid);
     if (g==NULL||p==NULL)
@@ -154,7 +199,10 @@ void all_play(char *name,struct stat buf)
     timering[size - 1] = '\0';
     printf("%s", timering);
     printf(" ");
+    CLOSE
+    colorprint(buf);
     printf("%s", name);
+    CLOSE
     printf("\n");
 }
 void display_R(int flag,char *pastfile[],int num)
@@ -259,23 +307,31 @@ void display_type(char *name,int flag)
     {
         if (a[0] != '.')
         {
+            colorprint(buf);
             simple_play(a);
+            CLOSE
         }
     }
     else if (flag == 1)
     {
+        colorprint(buf);
         simple_play(a);
+        CLOSE
     }
     else if (flag == 2)
     {
         if (a[0] != '.')
         {
+            
             all_play(a,buf);
+            
         }
     }
     else if (flag == 3)
     {
+        
         all_play(a,buf);
+        
     }
     
 }
@@ -386,6 +442,7 @@ void work_dir(char *path,int flag)
 
 int main(int argc, char **argv)
 {
+    signal(SIGINT, SIG_IGN);
     char argustr[100];
     int count_arguments=0;
     struct stat buf;
